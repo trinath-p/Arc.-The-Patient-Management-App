@@ -24,7 +24,9 @@ async function loadPatients() {
   const tbody = document.getElementById('patientsTbody');
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading…</td></tr>';
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/patients`);
+    const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+    const url = fhirServerUrl ? `${API_BASE}/patients?fhir_server_url=${encodeURIComponent(fhirServerUrl)}` : `${API_BASE}/patients`;
+    const res = await fetchWithTimeout(url);
     const data = await res.json();
     renderPatients(data);
   } catch (e) {
@@ -115,8 +117,11 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
 
   try {
     setLoading(true);
+    const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+    const serverUrlParam = fhirServerUrl ? `?fhir_server_url=${encodeURIComponent(fhirServerUrl)}` : '';
+    
     if (id) {
-      const r = await fetchWithTimeout(`${API_BASE}/patients/${encodeURIComponent(id)}`, {
+      const r = await fetchWithTimeout(`${API_BASE}/patients/${encodeURIComponent(id)}${serverUrlParam}`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ given, family, gender, birthDate, phone })
@@ -125,7 +130,7 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
       msg.textContent = `Updated: ${data.given || ''} ${data.family || ''}`.trim();
       showAlert('Patient updated successfully.', 'success');
     } else {
-      const r = await fetchWithTimeout(`${API_BASE}/patients`, {
+      const r = await fetchWithTimeout(`${API_BASE}/patients${serverUrlParam}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ given, family, gender, birthDate, phone })
@@ -153,10 +158,12 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   const ident = document.getElementById('searchIdentifier').value.trim();
   const name = document.getElementById('searchName').value.trim();
   const phone = document.getElementById('searchPhone').value.trim();
+  const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
   const params = new URLSearchParams();
   if (ident) params.append('identifier', ident);
   if (name) params.append('name', name);
   if (phone) params.append('phone', phone);
+  if (fhirServerUrl) params.append('fhir_server_url', fhirServerUrl);
   const tbody = document.getElementById('patientsTbody');
   tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Searching…</td></tr>';
   try {
@@ -183,5 +190,23 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   document.getElementById('searchName').value = '';
   document.getElementById('searchPhone').value = '';
   loadPatients();
+});
+
+// Auto-reload patients when FHIR server URL changes
+document.getElementById('fhirServerUrl').addEventListener('input', (e) => {
+  // Debounce the input to avoid too many requests
+  clearTimeout(window.fhirUrlTimeout);
+  
+  // Show a visual indicator that we're waiting for input to settle
+  const input = e.target;
+  input.style.borderColor = '#ffa500'; // Orange border to indicate processing
+  
+  window.fhirUrlTimeout = setTimeout(() => {
+    if (e.target.value.trim()) {
+      showAlert('Loading patients from new FHIR server...', 'info');
+      loadPatients();
+    }
+    input.style.borderColor = ''; // Reset border color
+  }, 1000); // Wait 1 second after user stops typing
 });
 

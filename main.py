@@ -59,10 +59,11 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-async def fhir_get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+async def fhir_get(path: str, params: Optional[Dict[str, Any]] = None, base_url: Optional[str] = None) -> Dict[str, Any]:
+    server_url = base_url or FHIR_BASE_URL
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.get(f"{FHIR_BASE_URL}/{path.lstrip('/')}", params=params)
+            r = await client.get(f"{server_url}/{path.lstrip('/')}", params=params)
             r.raise_for_status()
             return r.json()
     except httpx.HTTPStatusError as e:
@@ -71,10 +72,11 @@ async def fhir_get(path: str, params: Optional[Dict[str, Any]] = None) -> Dict[s
         raise HTTPException(status_code=502, detail=f"FHIR connection error: {e}")
 
 
-async def fhir_post(resource_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+async def fhir_post(resource_type: str, data: Dict[str, Any], base_url: Optional[str] = None) -> Dict[str, Any]:
+    server_url = base_url or FHIR_BASE_URL
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.post(f"{FHIR_BASE_URL}/{resource_type}", json=data)
+            r = await client.post(f"{server_url}/{resource_type}", json=data)
             r.raise_for_status()
             return r.json()
     except httpx.HTTPStatusError as e:
@@ -83,10 +85,11 @@ async def fhir_post(resource_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=502, detail=f"FHIR connection error: {e}")
 
 
-async def fhir_put(resource_type: str, resource_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
+async def fhir_put(resource_type: str, resource_id: str, data: Dict[str, Any], base_url: Optional[str] = None) -> Dict[str, Any]:
+    server_url = base_url or FHIR_BASE_URL
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.put(f"{FHIR_BASE_URL}/{resource_type}/{resource_id}", json=data)
+            r = await client.put(f"{server_url}/{resource_type}/{resource_id}", json=data)
             r.raise_for_status()
             return r.json()
     except httpx.HTTPStatusError as e:
@@ -160,8 +163,9 @@ def extract_patient_summary(entry: Dict[str, Any]) -> Optional[PatientSummary]:
 
 
 @app.get("/patients", response_model=List[PatientSummary])
-async def list_patients() -> List[PatientSummary]:
-    bundle = await fhir_get("Patient", params={"_count": 50})
+async def list_patients(fhir_server_url: Optional[str] = Query(default=None)) -> List[PatientSummary]:
+    server_url = fhir_server_url or FHIR_BASE_URL
+    bundle = await fhir_get("Patient", params={"_count": 50}, base_url=server_url)
     entries = bundle.get("entry", [])
     summaries: List[PatientSummary] = []
     for e in entries:
@@ -172,7 +176,7 @@ async def list_patients() -> List[PatientSummary]:
 
 
 @app.post("/patients", response_model=PatientSummary)
-async def create_patient(payload: PatientCreate) -> PatientSummary:
+async def create_patient(payload: PatientCreate, fhir_server_url: Optional[str] = Query(default=None)) -> PatientSummary:
     validate_birthdate_not_future(payload.birthDate)
     resource = build_patient_resource(
         given=payload.given,
@@ -181,7 +185,8 @@ async def create_patient(payload: PatientCreate) -> PatientSummary:
         birthDate=payload.birthDate,
         phone=payload.phone,
     )
-    created = await fhir_post("Patient", resource)
+    server_url = fhir_server_url or FHIR_BASE_URL
+    created = await fhir_post("Patient", resource, base_url=server_url)
     summary = extract_patient_summary(created)
     if not summary:
         raise HTTPException(status_code=500, detail="Failed to create patient")
@@ -189,8 +194,9 @@ async def create_patient(payload: PatientCreate) -> PatientSummary:
 
 
 @app.put("/patients/{patient_id}", response_model=PatientSummary)
-async def update_patient(patient_id: str, payload: PatientUpdate) -> PatientSummary:
-    existing = await fhir_get(f"Patient/{patient_id}")
+async def update_patient(patient_id: str, payload: PatientUpdate, fhir_server_url: Optional[str] = Query(default=None)) -> PatientSummary:
+    server_url = fhir_server_url or FHIR_BASE_URL
+    existing = await fhir_get(f"Patient/{patient_id}", base_url=server_url)
     if not existing or existing.get("resourceType") != "Patient":
         raise HTTPException(status_code=404, detail="Patient not found")
 
@@ -218,7 +224,7 @@ async def update_patient(patient_id: str, payload: PatientUpdate) -> PatientSumm
         else:
             existing["telecom"] = [{"system": "phone", "value": str(payload.phone)}]
 
-    updated = await fhir_put("Patient", patient_id, existing)
+    updated = await fhir_put("Patient", patient_id, existing, base_url=server_url)
     summary = extract_patient_summary(updated)
     if not summary:
         raise HTTPException(status_code=500, detail="Failed to update patient")
@@ -226,7 +232,7 @@ async def update_patient(patient_id: str, payload: PatientUpdate) -> PatientSumm
 
 
 @app.get("/patients/search", response_model=List[PatientSummary])
-async def search_patients(name: Optional[str] = Query(default=None), phone: Optional[str] = Query(default=None), identifier: Optional[str] = Query(default=None)) -> List[PatientSummary]:
+async def search_patients(name: Optional[str] = Query(default=None), phone: Optional[str] = Query(default=None), identifier: Optional[str] = Query(default=None), fhir_server_url: Optional[str] = Query(default=None)) -> List[PatientSummary]:
     params: Dict[str, Any] = {"_count": 50}
     if name:
         params["name"] = name
@@ -234,7 +240,8 @@ async def search_patients(name: Optional[str] = Query(default=None), phone: Opti
         params["telecom"] = phone
     if identifier:
         params["_id"] = identifier
-    bundle = await fhir_get("Patient", params=params)
+    server_url = fhir_server_url or FHIR_BASE_URL
+    bundle = await fhir_get("Patient", params=params, base_url=server_url)
     entries = bundle.get("entry", [])
     results: List[PatientSummary] = []
     for e in entries:
