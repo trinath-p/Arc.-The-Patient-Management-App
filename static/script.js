@@ -1,6 +1,61 @@
 const API_BASE = '';
 // Requests no longer use an artificial timeout
 
+// FHIR Server URL management
+const FHIR_URLS_KEY = 'fhirServerUrls';
+
+function loadSavedFhirUrls() {
+  const saved = localStorage.getItem(FHIR_URLS_KEY);
+  return saved ? JSON.parse(saved) : [];
+}
+
+function saveFhirUrl(url) {
+  if (!url || !url.trim()) return;
+  
+  const urls = loadSavedFhirUrls();
+  if (!urls.includes(url)) {
+    urls.push(url);
+    localStorage.setItem(FHIR_URLS_KEY, JSON.stringify(urls));
+    updateFhirUrlDropdown();
+  }
+}
+
+function updateFhirUrlDropdown() {
+  const select = document.getElementById('fhirServerUrl');
+  const urls = loadSavedFhirUrls();
+  
+  // Clear existing options except the first one
+  select.innerHTML = '<option value="">Select or enter a FHIR server URL</option>';
+  
+  // Add saved URLs
+  urls.forEach(url => {
+    const option = document.createElement('option');
+    option.value = url;
+    option.textContent = url;
+    select.appendChild(option);
+  });
+}
+
+function getCurrentFhirUrl() {
+  const select = document.getElementById('fhirServerUrl');
+  const input = document.getElementById('fhirServerUrlInput');
+  
+  const selectedUrl = select.value.trim();
+  const inputUrl = input.value.trim();
+  
+  // If dropdown has a selection, use it
+  if (selectedUrl) {
+    return selectedUrl;
+  }
+  
+  // If input has a value, use it
+  if (inputUrl) {
+    return inputUrl;
+  }
+  
+  return '';
+}
+
 function showAlert(message, type = 'info') {
   const wrap = document.getElementById('alerts');
   if (!wrap) return;
@@ -24,7 +79,7 @@ async function loadPatients() {
   const tbody = document.getElementById('patientsTbody');
   tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading…</td></tr>';
   try {
-    const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+    const fhirServerUrl = getCurrentFhirUrl();
     const sortValue = document.getElementById('sortSelect').value;
     const params = new URLSearchParams();
     if (fhirServerUrl) params.append('fhir_server_url', fhirServerUrl);
@@ -123,7 +178,7 @@ document.getElementById('patientForm').addEventListener('submit', async (e) => {
 
   try {
     setLoading(true);
-    const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+    const fhirServerUrl = getCurrentFhirUrl();
     const serverUrlParam = fhirServerUrl ? `?fhir_server_url=${encodeURIComponent(fhirServerUrl)}` : '';
     
     if (id) {
@@ -164,7 +219,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   const ident = document.getElementById('searchIdentifier').value.trim();
   const name = document.getElementById('searchName').value.trim();
   const phone = document.getElementById('searchPhone').value.trim();
-  const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+  const fhirServerUrl = getCurrentFhirUrl();
   const sortValue = document.getElementById('sortSelect').value;
   const params = new URLSearchParams();
   if (ident) params.append('identifier', ident);
@@ -201,8 +256,28 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 });
 
 // Auto-reload patients when FHIR server URL changes
-document.getElementById('fhirServerUrl').addEventListener('input', (e) => {
-  // Debounce the input to avoid too many requests
+function handleFhirUrlChange() {
+  clearTimeout(window.fhirUrlTimeout);
+  
+  const fhirUrl = getCurrentFhirUrl();
+  if (fhirUrl) {
+    // Save the URL if it's from the input field
+    const input = document.getElementById('fhirServerUrlInput');
+    if (input.value.trim() === fhirUrl) {
+      saveFhirUrl(fhirUrl);
+      input.value = ''; // Clear the input after saving
+    }
+    
+    showAlert('Loading patients from new FHIR server...', 'info');
+    loadPatients();
+  }
+}
+
+// Handle dropdown selection
+document.getElementById('fhirServerUrl').addEventListener('change', handleFhirUrlChange);
+
+// Handle input field with debouncing
+document.getElementById('fhirServerUrlInput').addEventListener('input', (e) => {
   clearTimeout(window.fhirUrlTimeout);
   
   // Show a visual indicator that we're waiting for input to settle
@@ -210,10 +285,7 @@ document.getElementById('fhirServerUrl').addEventListener('input', (e) => {
   input.style.borderColor = '#ffa500'; // Orange border to indicate processing
   
   window.fhirUrlTimeout = setTimeout(() => {
-    if (e.target.value.trim()) {
-      showAlert('Loading patients from new FHIR server...', 'info');
-      loadPatients();
-    }
+    handleFhirUrlChange();
     input.style.borderColor = ''; // Reset border color
   }, 1000); // Wait 1 second after user stops typing
 });

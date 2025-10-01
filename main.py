@@ -174,7 +174,7 @@ async def list_patients(
     sort: Optional[str] = Query(default=None, description="Sort by field (e.g., '-_lastUpdated' for descending, '_lastUpdated' for ascending)")
 ) -> List[PatientSummary]:
     server_url = fhir_server_url or FHIR_BASE_URL
-    params = {"_count": 50}
+    params = {"_count": 15}
     if sort:
         params["_sort"] = sort
     bundle = await fhir_get("Patient", params=params, base_url=server_url)
@@ -251,7 +251,7 @@ async def search_patients(
     fhir_server_url: Optional[str] = Query(default=None),
     sort: Optional[str] = Query(default=None, description="Sort by field (e.g., '-_lastUpdated' for descending, '_lastUpdated' for ascending)")
 ) -> List[PatientSummary]:
-    params: Dict[str, Any] = {"_count": 50}
+    params: Dict[str, Any] = {"_count": 15}
     if name:
         params["name"] = name
     if phone:

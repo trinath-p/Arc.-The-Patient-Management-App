@@ -17,7 +17,12 @@
                     <h2>FHIR Server Configuration</h2>
                     <div class="row">
                         <label for="fhirServerUrl">FHIR Server URL</label>
-                        <input id="fhirServerUrl" type="url" placeholder="https://fhir-bootcamp.medblocks.com/fhir" value="https://fhir-bootcamp.medblocks.com/fhir">
+                        <div style="display: flex; gap: 5px;">
+                            <select id="fhirServerUrl" style="flex: 1;">
+                                <option value="">Select or enter a FHIR server URL</option>
+                            </select>
+                            <input id="fhirServerUrlInput" type="url" placeholder="Enter new FHIR server URL" style="flex: 1;">
+                        </div>
                     </div>
                 </section>
                 <section class="search-section">
@@ -109,7 +114,10 @@
     <script src="/static/script.js"></script>
     <script>
         // Auto-load
-        window.addEventListener('DOMContentLoaded', loadPatients);
+        window.addEventListener('DOMContentLoaded', () => {
+            updateFhirUrlDropdown();
+            // Don't auto-load patients since URL field is blank by default
+        });
     </script>
 </body>
 </html>
