@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Management (MVP)</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Patient Management</h1>
+
+        <div class="grid">
+            <div class="left">
+                <div id="alerts" class="alerts"></div>
+                <section class="search-section">
+                    <h2>Search</h2>
+                    <div class="row">
+                        <input id="searchIdentifier" type="text" placeholder="Search by identifier">
+                        <input id="searchName" type="text" placeholder="Search by name">
+                        <input id="searchPhone" type="text" placeholder="Search by phone">
+                        <button id="searchBtn">Search</button>
+                        <button id="resetBtn">Reset</button>
+                    </div>
+                </section>
+
+                <section class="form-section">
+                    <h2>Create / Update Patient</h2>
+                    <form id="patientForm">
+                        <input type="hidden" id="patientId">
+                        
+                        <div class="row">
+                            <label for="given">First Name</label>
+                            <input id="given" type="text" required placeholder="First name">
+                        </div>
+                        <div class="row">
+                            <label for="family">Last Name</label>
+                            <input id="family" type="text" required placeholder="Last name">
+                        </div>
+                        <div class="row">
+                            <label for="gender">Gender</label>
+                            <select id="gender" required>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                                <option value="unknown">Unknown</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <label for="birthDate">Date of Birth</label>
+                            <input id="birthDate" type="date" required>
+                        </div>
+                        <div class="row">
+                            <label for="phone">Phone</label>
+                            <input id="phone" type="number" inputmode="numeric" pattern="[0-9]*" placeholder="Enter your phone">
+                        </div>
+                        <div class="row">
+                            <button type="submit">Submit</button>
+                            <button type="button" id="clearBtn" class="secondary">Clear</button>
+                        </div>
+                    </form>
+                    <div id="formMsg" class="msg"></div>
+                </section>
+            </div>
+
+            <div class="right">
+                <section class="table-section">
+                    <h2>Patients</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Identifier</th>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>Gender</th>
+                                <th>Birth Date</th>
+                                <th>Phone</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="patientsTbody"></tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+        <div id="loadingOverlay" class="loading hidden">
+            <video id="loadingVideo" autoplay loop muted playsinline>
+                <source src="/static/loading.webm" type="video/webm">
+            </video>
+            <div class="loading-text">Loading…</div>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+    <script>
+        // Auto-load
+        window.addEventListener('DOMContentLoaded', loadPatients);
+    </script>
+</body>
+</html>
+
