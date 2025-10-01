@@ -22,30 +22,35 @@ async function fetchWithTimeout(resource, options = {}) { return fetch(resource,
 
 async function loadPatients() {
   const tbody = document.getElementById('patientsTbody');
-  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Loading…</td></tr>';
   try {
     const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
-    const url = fhirServerUrl ? `${API_BASE}/patients?fhir_server_url=${encodeURIComponent(fhirServerUrl)}` : `${API_BASE}/patients`;
+    const sortValue = document.getElementById('sortSelect').value;
+    const params = new URLSearchParams();
+    if (fhirServerUrl) params.append('fhir_server_url', fhirServerUrl);
+    if (sortValue) params.append('sort', sortValue);
+    const url = `${API_BASE}/patients${params.toString() ? '?' + params.toString() : ''}`;
     const res = await fetchWithTimeout(url);
     const data = await res.json();
     renderPatients(data);
   } catch (e) {
     const msg = 'FHIR server unavailable, try later.';
     showAlert(msg, 'error');
-    tbody.innerHTML = `<tr><td colspan="7">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8">${msg}</td></tr>`;
   }
 }
 
 function renderPatients(patients) {
   const tbody = document.getElementById('patientsTbody');
   if (!Array.isArray(patients) || patients.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7">No patient found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8">No patient found.</td></tr>';
     showAlert('No patient found.', 'info');
     return;
   }
   tbody.innerHTML = '';
   for (const p of patients) {
     const tr = document.createElement('tr');
+    const lastUpdated = p.lastUpdated ? new Date(p.lastUpdated).toLocaleString() : '';
     tr.innerHTML = `
       <td>${escapeHtml(p.identifier || '')}</td>
       <td>${escapeHtml(p.given || '')}</td>
@@ -53,6 +58,7 @@ function renderPatients(patients) {
       <td>${escapeHtml(p.gender || '')}</td>
       <td>${escapeHtml(p.birthDate || '')}</td>
       <td>${escapeHtml(p.phone || '')}</td>
+      <td>${escapeHtml(lastUpdated)}</td>
       <td>
         <button class="secondary" data-id="${p.id}" onclick="prefillForm('${p.id}', '${encodeURIComponent(p.identifier || '')}', '${encodeURIComponent(p.given || '')}', '${encodeURIComponent(p.family || '')}', '${encodeURIComponent(p.gender || '')}', '${encodeURIComponent(p.birthDate || '')}', '${encodeURIComponent(p.phone || '')}')">Edit</button>
       </td>
@@ -159,19 +165,21 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   const name = document.getElementById('searchName').value.trim();
   const phone = document.getElementById('searchPhone').value.trim();
   const fhirServerUrl = document.getElementById('fhirServerUrl').value.trim();
+  const sortValue = document.getElementById('sortSelect').value;
   const params = new URLSearchParams();
   if (ident) params.append('identifier', ident);
   if (name) params.append('name', name);
   if (phone) params.append('phone', phone);
   if (fhirServerUrl) params.append('fhir_server_url', fhirServerUrl);
+  if (sortValue) params.append('sort', sortValue);
   const tbody = document.getElementById('patientsTbody');
-  tbody.innerHTML = '<tr><td colspan="7" class="table-loading">Searching…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="table-loading">Searching…</td></tr>';
   try {
     setLoading(true);
     const r = await fetchWithTimeout(`${API_BASE}/patients/search?${params.toString()}`);
     const data = await r.json();
     if ((params.get('phone') || '') && (!Array.isArray(data) || data.length === 0)) {
-      tbody.innerHTML = '<tr><td colspan="7">No patient found with this phone number.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8">No patient found with this phone number.</td></tr>';
       showAlert('No patient found with this phone number.', 'info');
       return;
     }
@@ -179,7 +187,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
   } catch (e) {
     const msg = (e.name === 'AbortError') ? 'Request taking too long. Please retry.' : 'FHIR server unavailable, try later.';
     showAlert(msg, 'error');
-    tbody.innerHTML = `<tr><td colspan="7">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8">${msg}</td></tr>`;
   } finally {
     setLoading(false);
   }
@@ -208,5 +216,10 @@ document.getElementById('fhirServerUrl').addEventListener('input', (e) => {
     }
     input.style.borderColor = ''; // Reset border color
   }, 1000); // Wait 1 second after user stops typing
+});
+
+// Auto-reload patients when sort selection changes
+document.getElementById('sortSelect').addEventListener('change', () => {
+  loadPatients();
 });
 

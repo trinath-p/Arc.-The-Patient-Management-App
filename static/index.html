@@ -21,13 +21,21 @@
                     </div>
                 </section>
                 <section class="search-section">
-                    <h2>Search</h2>
+                    <h2>Search & Sort</h2>
                     <div class="row">
                         <input id="searchIdentifier" type="text" placeholder="Search by identifier">
                         <input id="searchName" type="text" placeholder="Search by name">
                         <input id="searchPhone" type="text" placeholder="Search by phone">
                         <button id="searchBtn">Search</button>
                         <button id="resetBtn">Reset</button>
+                    </div>
+                    <div class="row">
+                        <label for="sortSelect">Sort by:</label>
+                        <select id="sortSelect">
+                            <option value="">No sorting</option>
+                            <option value="_lastUpdated">Last Updated (Oldest first)</option>
+                            <option value="-_lastUpdated" selected>Last Updated (Newest first)</option>
+                        </select>
                     </div>
                 </section>
 
@@ -82,6 +90,7 @@
                                 <th>Gender</th>
                                 <th>Birth Date</th>
                                 <th>Phone</th>
+                                <th>Last Updated</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>

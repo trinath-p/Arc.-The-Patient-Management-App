@@ -44,6 +44,7 @@ class PatientSummary(BaseModel):
     gender: Optional[str] = None
     birthDate: Optional[str] = None
     phone: Optional[str] = None
+    lastUpdated: Optional[str] = None
 
 
 app = FastAPI(title="Patient Management API (MVP)")
@@ -159,13 +160,24 @@ def extract_patient_summary(entry: Dict[str, Any]) -> Optional[PatientSummary]:
             break
     gender = res.get("gender")
     birthDate = res.get("birthDate")
-    return PatientSummary(id=pid, identifier=identifier, given=given_val, family=family_val, gender=gender, birthDate=birthDate, phone=phone_val)
+    # Extract lastUpdated from meta field
+    lastUpdated = None
+    meta = res.get("meta", {})
+    if meta and "lastUpdated" in meta:
+        lastUpdated = meta["lastUpdated"]
+    return PatientSummary(id=pid, identifier=identifier, given=given_val, family=family_val, gender=gender, birthDate=birthDate, phone=phone_val, lastUpdated=lastUpdated)
 
 
 @app.get("/patients", response_model=List[PatientSummary])
-async def list_patients(fhir_server_url: Optional[str] = Query(default=None)) -> List[PatientSummary]:
+async def list_patients(
+    fhir_server_url: Optional[str] = Query(default=None),
+    sort: Optional[str] = Query(default=None, description="Sort by field (e.g., '-_lastUpdated' for descending, '_lastUpdated' for ascending)")
+) -> List[PatientSummary]:
     server_url = fhir_server_url or FHIR_BASE_URL
-    bundle = await fhir_get("Patient", params={"_count": 50}, base_url=server_url)
+    params = {"_count": 50}
+    if sort:
+        params["_sort"] = sort
+    bundle = await fhir_get("Patient", params=params, base_url=server_url)
     entries = bundle.get("entry", [])
     summaries: List[PatientSummary] = []
     for e in entries:
@@ -232,7 +244,13 @@ async def update_patient(patient_id: str, payload: PatientUpdate, fhir_server_ur
 
 
 @app.get("/patients/search", response_model=List[PatientSummary])
-async def search_patients(name: Optional[str] = Query(default=None), phone: Optional[str] = Query(default=None), identifier: Optional[str] = Query(default=None), fhir_server_url: Optional[str] = Query(default=None)) -> List[PatientSummary]:
+async def search_patients(
+    name: Optional[str] = Query(default=None), 
+    phone: Optional[str] = Query(default=None), 
+    identifier: Optional[str] = Query(default=None), 
+    fhir_server_url: Optional[str] = Query(default=None),
+    sort: Optional[str] = Query(default=None, description="Sort by field (e.g., '-_lastUpdated' for descending, '_lastUpdated' for ascending)")
+) -> List[PatientSummary]:
     params: Dict[str, Any] = {"_count": 50}
     if name:
         params["name"] = name
@@ -240,6 +258,8 @@ async def search_patients(name: Optional[str] = Query(default=None), phone: Opti
         params["telecom"] = phone
     if identifier:
         params["_id"] = identifier
+    if sort:
+        params["_sort"] = sort
     server_url = fhir_server_url or FHIR_BASE_URL
     bundle = await fhir_get("Patient", params=params, base_url=server_url)
     entries = bundle.get("entry", [])
