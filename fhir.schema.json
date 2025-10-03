@@ -1,0 +1,477 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "FHIR Patient Resource Schema",
+  "description": "JSON Schema for FHIR R4 Patient resource validation",
+  "required": ["resourceType"],
+  "properties": {
+    "resourceType": {
+      "type": "string",
+      "const": "Patient",
+      "description": "The resource type must be Patient"
+    },
+    "id": {
+      "type": "string",
+      "description": "The logical id of the resource"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Metadata about the resource",
+      "properties": {
+        "versionId": {
+          "type": "string"
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "profile": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "identifier": {
+      "type": "array",
+      "description": "An identifier for this patient",
+      "items": {
+        "type": "object",
+        "properties": {
+          "use": {
+            "type": "string",
+            "enum": ["usual", "official", "temp", "secondary"]
+          },
+          "type": {
+            "type": "object",
+            "properties": {
+              "coding": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "system": {"type": "string"},
+                    "code": {"type": "string"},
+                    "display": {"type": "string"}
+                  }
+                }
+              }
+            }
+          },
+          "system": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether this patient's record is in active use"
+    },
+    "name": {
+      "type": "array",
+      "description": "A name associated with the patient",
+      "items": {
+        "type": "object",
+        "properties": {
+          "use": {
+            "type": "string",
+            "enum": ["usual", "official", "temp", "nickname", "anonymous", "old", "maiden"]
+          },
+          "family": {
+            "type": "string",
+            "description": "Family name (often called 'Surname')"
+          },
+          "given": {
+            "type": "array",
+            "description": "Given names (not always 'first'). Includes middle names",
+            "items": {
+              "type": "string"
+            }
+          },
+          "prefix": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "suffix": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "telecom": {
+      "type": "array",
+      "description": "A contact detail for the individual",
+      "items": {
+        "type": "object",
+        "properties": {
+          "system": {
+            "type": "string",
+            "enum": ["phone", "fax", "email", "pager", "url", "sms", "other"]
+          },
+          "value": {
+            "type": "string"
+          },
+          "use": {
+            "type": "string",
+            "enum": ["home", "work", "temp", "old", "mobile"]
+          },
+          "rank": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": ["system", "value"]
+      }
+    },
+    "gender": {
+      "type": "string",
+      "enum": ["male", "female", "other", "unknown"],
+      "description": "Administrative Gender - the gender that the patient is considered to have for administration and record keeping purposes"
+    },
+    "birthDate": {
+      "type": "string",
+      "format": "date",
+      "description": "The date of birth for the individual"
+    },
+    "deceasedBoolean": {
+      "type": "boolean",
+      "description": "Indicates if the individual is deceased or not"
+    },
+    "deceasedDateTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "The date of death"
+    },
+    "address": {
+      "type": "array",
+      "description": "An address for the individual",
+      "items": {
+        "type": "object",
+        "properties": {
+          "use": {
+            "type": "string",
+            "enum": ["home", "work", "temp", "old", "billing"]
+          },
+          "type": {
+            "type": "string",
+            "enum": ["postal", "physical", "both"]
+          },
+          "text": {
+            "type": "string"
+          },
+          "line": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "maritalStatus": {
+      "type": "object",
+      "description": "Marital (civil) status of a patient",
+      "properties": {
+        "coding": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "system": {"type": "string"},
+              "code": {"type": "string"},
+              "display": {"type": "string"}
+            }
+          }
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "multipleBirthBoolean": {
+      "type": "boolean",
+      "description": "Whether patient is part of a multiple birth"
+    },
+    "multipleBirthInteger": {
+      "type": "integer",
+      "description": "Order of birth"
+    },
+    "photo": {
+      "type": "array",
+      "description": "Image of the patient",
+      "items": {
+        "type": "object",
+        "properties": {
+          "contentType": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "hash": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "creation": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "contact": {
+      "type": "array",
+      "description": "A contact party (e.g. guardian, partner, friend) for the patient",
+      "items": {
+        "type": "object",
+        "properties": {
+          "relationship": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "coding": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "system": {"type": "string"},
+                      "code": {"type": "string"},
+                      "display": {"type": "string"}
+                    }
+                  }
+                },
+                "text": {"type": "string"}
+              }
+            }
+          },
+          "name": {
+            "type": "object",
+            "properties": {
+              "use": {
+                "type": "string",
+                "enum": ["usual", "official", "temp", "nickname", "anonymous", "old", "maiden"]
+              },
+              "family": {"type": "string"},
+              "given": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          },
+          "telecom": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "system": {
+                  "type": "string",
+                  "enum": ["phone", "fax", "email", "pager", "url", "sms", "other"]
+                },
+                "value": {"type": "string"},
+                "use": {
+                  "type": "string",
+                  "enum": ["home", "work", "temp", "old", "mobile"]
+                }
+              }
+            }
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "use": {
+                "type": "string",
+                "enum": ["home", "work", "temp", "old", "billing"]
+              },
+              "type": {
+                "type": "string",
+                "enum": ["postal", "physical", "both"]
+              },
+              "text": {"type": "string"},
+              "line": {
+                "type": "array",
+                "items": {"type": "string"}
+              },
+              "city": {"type": "string"},
+              "district": {"type": "string"},
+              "state": {"type": "string"},
+              "postalCode": {"type": "string"},
+              "country": {"type": "string"}
+            }
+          },
+          "gender": {
+            "type": "string",
+            "enum": ["male", "female", "other", "unknown"]
+          },
+          "organization": {
+            "type": "object",
+            "properties": {
+              "reference": {"type": "string"},
+              "type": {"type": "string"},
+              "identifier": {
+                "type": "object",
+                "properties": {
+                  "use": {"type": "string"},
+                  "type": {"type": "object"},
+                  "system": {"type": "string"},
+                  "value": {"type": "string"}
+                }
+              },
+              "display": {"type": "string"}
+            }
+          },
+          "period": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "end": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      }
+    },
+    "communication": {
+      "type": "array",
+      "description": "A language which may be used to communicate with the patient about his or her health",
+      "items": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "type": "object",
+            "properties": {
+              "coding": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "system": {"type": "string"},
+                    "code": {"type": "string"},
+                    "display": {"type": "string"}
+                  }
+                }
+              },
+              "text": {"type": "string"}
+            }
+          },
+          "preferred": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "generalPractitioner": {
+      "type": "array",
+      "description": "Patient's nominated primary care provider",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reference": {"type": "string"},
+          "type": {"type": "string"},
+          "identifier": {
+            "type": "object",
+            "properties": {
+              "use": {"type": "string"},
+              "type": {"type": "object"},
+              "system": {"type": "string"},
+              "value": {"type": "string"}
+            }
+          },
+          "display": {"type": "string"}
+        }
+      }
+    },
+    "managingOrganization": {
+      "type": "object",
+      "description": "Organization that is the custodian of the patient record",
+      "properties": {
+        "reference": {"type": "string"},
+        "type": {"type": "string"},
+        "identifier": {
+          "type": "object",
+          "properties": {
+            "use": {"type": "string"},
+            "type": {"type": "object"},
+            "system": {"type": "string"},
+            "value": {"type": "string"}
+          }
+        },
+        "display": {"type": "string"}
+      }
+    },
+    "link": {
+      "type": "array",
+      "description": "Link to another patient resource that concerns the same actual person",
+      "items": {
+        "type": "object",
+        "properties": {
+          "other": {
+            "type": "object",
+            "properties": {
+              "reference": {"type": "string"},
+              "type": {"type": "string"},
+              "identifier": {
+                "type": "object",
+                "properties": {
+                  "use": {"type": "string"},
+                  "type": {"type": "object"},
+                  "system": {"type": "string"},
+                  "value": {"type": "string"}
+                }
+              },
+              "display": {"type": "string"}
+            }
+          },
+          "type": {
+            "type": "string",
+            "enum": ["replaced-by", "replaces", "refer", "seealso"]
+          }
+        },
+        "required": ["other", "type"]
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

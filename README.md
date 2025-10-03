@@ -1,10 +1,10 @@
 # Patient Management MVP (FastAPI + Static Frontend)
 
-A minimal Patient Management app that uses a public FHIR test server as the backend data source. Built with FastAPI and a static HTML/CSS/JS frontend.
+A comprehensive Patient Management app that connects to FHIR servers as the backend data source. Built with FastAPI and a modern static HTML/CSS/JS frontend with advanced FHIR server management capabilities.
 
-- Backend: FastAPI, proxied to `https://fhir-bootcamp.medblocks.com/fhir`
-- Frontend: Single page (`/static/index.html`) using vanilla JS
-- Features: List, Create, Update, and Search Patients
+- Backend: FastAPI with dynamic FHIR server support
+- Frontend: Single page application (`/static/index.html`) using vanilla JS
+- Features: List, Create, Update, Search, and Sort Patients with multi-server support
 
 ## Prerequisites
 - Python 3.10+
@@ -26,30 +26,41 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 - API docs: `http://localhost:8000/docs`
 - Frontend: `http://localhost:8000/static/index.html`
 
+## Quick Start
+
+1. **Start the server**: Run the uvicorn command above
+2. **Open the frontend**: Navigate to `http://localhost:8000/static/index.html`
+3. **Enter FHIR server URL**: Type a FHIR server URL (e.g., `https://fhir-bootcamp.medblocks.com/fhir`)
+4. **Start managing patients**: The app will automatically load patients and you can create, update, search, and sort them
+
 ## App Overview
 
-This app is a minimal patient registry that proxies to a public FHIR server. It intentionally avoids a local DB to keep the surface small. The backend normalizes/sanitizes data into FHIR Patient resources; the frontend provides a simple SPA experience.
+This app is a comprehensive patient registry that connects to FHIR servers dynamically. It intentionally avoids a local DB to keep the surface small while providing enterprise-level FHIR server management. The backend normalizes/sanitizes data into FHIR Patient resources; the frontend provides a modern SPA experience with advanced server management capabilities.
 
 ## Features
 
 ### Patient Management
 - **List Patients**: View all patients with pagination (15 per page)
-- **Create Patient**: Add new patients with validation
+- **Create Patient**: Add new patients with comprehensive validation
 - **Update Patient**: Edit existing patient information (partial updates supported)
-- **Search Patients**: Multiple search methods available
+- **Search Patients**: Multiple search methods with advanced filtering
+- **Sort Patients**: Sort by last updated timestamp (newest/oldest first)
 
-### Search Capabilities
+### Search & Sort Capabilities
 - **Name Search**: Partial matching on patient names
 - **Phone Search**: Search by phone number
 - **Identifier Search**: Exact match by patient identifier
 - **Combined Search**: Use multiple search criteria simultaneously
 - **Sort Options**: Sort by last updated (ascending/descending)
+- **Real-time Sorting**: Instant sorting without page reload
 
-### FHIR Server Integration
-- **Configurable Server**: Switch between different FHIR servers
-- **URL Management**: Save and reuse previously used FHIR server URLs
-- **Real-time Operations**: All operations reflect immediately in the UI
-- **Error Handling**: Graceful handling of server unavailability
+### FHIR Server Management
+- **Dynamic Server Selection**: Switch between different FHIR servers on-the-fly
+- **URL Persistence**: Save and reuse previously used FHIR server URLs
+- **Blank by Default**: Starts with no server selected for security
+- **Auto-reload**: Automatically loads patients when server URL changes
+- **Visual Feedback**: Orange border indicator during URL processing
+- **Multi-server Support**: Work with multiple FHIR servers seamlessly
 
 ### Data Validation & Rules
 - **Future Date Prevention**: Date of Birth cannot be in the future
@@ -71,12 +82,15 @@ This app is a minimal patient registry that proxies to a public FHIR server. It 
 - **Telecom Support**: Phone number management with system specification
 - **Meta Data Tracking**: Last updated timestamps from FHIR meta fields
 - **CORS Support**: Cross-origin resource sharing enabled for API access
+- **Local Storage**: Persistent FHIR server URL management
+- **Debounced Input**: Smart input handling to prevent excessive API calls
 
 ### Configuration Options
-- **Environment Variables**: FHIR_BASE_URL configuration
-- **Server Selection**: Dynamic FHIR server URL switching
-- **Pagination Control**: Configurable result limits
+- **Environment Variables**: FHIR_BASE_URL configuration (fallback only)
+- **Dynamic Server Selection**: Real-time FHIR server URL switching
+- **Pagination Control**: Configurable result limits (15 per page)
 - **Sort Parameters**: Flexible sorting options via FHIR parameters
+- **URL Management**: Automatic saving and retrieval of server URLs
 
 ### Error Handling
 - **Network Errors**: Handles connection failures gracefully
@@ -124,13 +138,69 @@ This app is a minimal patient registry that proxies to a public FHIR server. It 
 - Client appearance: loader video at `static/loading.webm`; you can replace it with any webM.
 - Colors/icons: date input uses a light calendar icon for contrast; adjust in `static/style.css`.
 
-## API design (brief)
-- `GET /patients`: returns an array of simplified patients `{ id, identifier, given, family, gender, birthDate, phone }` built from FHIR `Patient`.
-- `POST /patients`: accepts `{ given, family, gender, birthDate, phone }`, validates, and creates FHIR Patient.
-- `PUT /patients/{id}`: partial updates; sanitizes name fields and phone.
-- `GET /patients/search?name&phone`: bundles FHIR search; returns simplified array.
-- `GET /patients/search?identifier` is also supported (exact identifier match).
+## API Design
+
+### Core Endpoints
+- `GET /patients`: Returns an array of simplified patients `{ id, identifier, given, family, gender, birthDate, phone, lastUpdated }` built from FHIR `Patient` resources
+- `POST /patients`: Accepts `{ given, family, gender, birthDate, phone }`, validates, and creates FHIR Patient
+- `PUT /patients/{id}`: Partial updates; sanitizes name fields and phone
+- `GET /patients/search`: Advanced search with multiple parameters
+
+### Query Parameters
+- `fhir_server_url`: Dynamic FHIR server URL (optional, falls back to environment variable)
+- `sort`: Sort parameter (e.g., `-_lastUpdated` for newest first, `_lastUpdated` for oldest first)
+- `name`: Search by patient name (partial matching)
+- `phone`: Search by phone number
+- `identifier`: Search by exact identifier match
+- `_count`: Limit results (default: 15)
+
+### FHIR Integration
+- All endpoints support dynamic FHIR server switching via `fhir_server_url` parameter
+- Automatic FHIR resource validation and error handling
+- Real-time sorting and filtering using FHIR search parameters
+
+## FHIR Server Management Workflow
+
+### Getting Started
+1. **Launch the app**: The FHIR server URL field starts blank for security
+2. **Enter a server URL**: Type a FHIR server URL in the input field
+3. **Auto-save**: The URL is automatically saved to localStorage after 1 second
+4. **Auto-load**: Patients are automatically loaded from the new server
+5. **Reuse**: Previously used URLs appear in the dropdown for quick selection
+
+### Server Switching
+- **Select from dropdown**: Choose a previously used FHIR server
+- **Enter new URL**: Type a new FHIR server URL in the input field
+- **Visual feedback**: Orange border indicates processing
+- **Instant switching**: All operations (list, create, update, search) use the selected server
+
+### Security Features
+- **Blank by default**: No server is pre-selected on page load
+- **Reset on refresh**: Returns to blank state when page is refreshed
+- **URL validation**: Input field validates URL format
+- **Local storage**: URLs are stored locally, not transmitted to external servers
+
+## Technical Implementation
+
+### Frontend Architecture
+- **Vanilla JavaScript**: No frameworks, pure ES6+ JavaScript
+- **Local Storage API**: Persistent FHIR server URL management
+- **Debounced Input**: Prevents excessive API calls during typing
+- **Event-driven**: Real-time updates based on user interactions
+
+### Backend Architecture
+- **FastAPI**: Modern Python web framework with automatic API documentation
+- **Async/Await**: Non-blocking HTTP requests to FHIR servers
+- **Pydantic Models**: Type-safe data validation and serialization
+- **FHIR R4 Compliance**: Full compatibility with FHIR R4 specification
+
+### FHIR Resource Handling
+- **Patient Resources**: Complete FHIR Patient resource mapping
+- **Bundle Processing**: Handles FHIR Bundle responses for search operations
+- **Meta Data**: Extracts and displays last updated timestamps
+- **Error Handling**: Comprehensive FHIR server error management
 
 ## Notes
-- No local database is used. All patient operations are relayed to the public FHIR server.
-- We intentionally use a minimal FHIR Patient subset for MVP clarity.
+- No local database is used. All patient operations are relayed to FHIR servers.
+- We intentionally use a minimal FHIR Patient subset for MVP clarity while maintaining full FHIR compliance.
+- The app supports any FHIR R4-compliant server, making it highly interoperable.

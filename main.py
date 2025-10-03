@@ -5,9 +5,16 @@ from pydantic import BaseModel, Field, constr, conint
 from typing import List, Optional, Dict, Any
 import httpx
 import os
+import json
+import jsonschema
+from jsonschema import validate, ValidationError
 
 
 FHIR_BASE_URL = os.getenv("FHIR_BASE_URL", "https://fhir-bootcamp.medblocks.com/fhir")
+
+# Load FHIR schema on startup
+with open("fhir.schema.json", "r") as schema_file:
+    FHIR_SCHEMA = json.load(schema_file)
 
 
 class HumanName(BaseModel):
@@ -132,6 +139,27 @@ def validate_birthdate_not_future(birth_date: str) -> None:
         raise HTTPException(status_code=422, detail="Date of Birth cannot be in the future.")
 
 
+def validate_resource_against_fhir_schema(resource: Dict[str, Any]) -> None:
+    """
+    Layer 3: FHIR Schema validation using jsonschema
+    Validates the constructed FHIR resource against fhir.schema.json
+    """
+    try:
+        validate(instance=resource, schema=FHIR_SCHEMA)
+    except ValidationError as e:
+        # Extract the path and error message for better error reporting
+        path = '.'.join(map(str, e.path)) if e.path else 'root'
+        error_message = e.message
+        
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "status": "error",
+                "detail": f"FHIR schema validation error: {error_message} on path {path}"
+            }
+        )
+
+
 def extract_patient_summary(entry: Dict[str, Any]) -> Optional[PatientSummary]:
     res = entry.get("resource") if "resource" in entry else entry
     if not res or res.get("resourceType") != "Patient":
@@ -189,7 +217,11 @@ async def list_patients(
 
 @app.post("/patients", response_model=PatientSummary)
 async def create_patient(payload: PatientCreate, fhir_server_url: Optional[str] = Query(default=None)) -> PatientSummary:
+    # Layer 1: Pydantic validation (automatic via PatientCreate model)
+    # Layer 2: Business Rules validation
     validate_birthdate_not_future(payload.birthDate)
+    
+    # Build the FHIR resource
     resource = build_patient_resource(
         given=payload.given,
         family=payload.family,
@@ -197,6 +229,10 @@ async def create_patient(payload: PatientCreate, fhir_server_url: Optional[str] 
         birthDate=payload.birthDate,
         phone=payload.phone,
     )
+    
+    # Layer 3: FHIR Schema validation
+    validate_resource_against_fhir_schema(resource)
+    
     server_url = fhir_server_url or FHIR_BASE_URL
     created = await fhir_post("Patient", resource, base_url=server_url)
     summary = extract_patient_summary(created)
@@ -207,6 +243,7 @@ async def create_patient(payload: PatientCreate, fhir_server_url: Optional[str] 
 
 @app.put("/patients/{patient_id}", response_model=PatientSummary)
 async def update_patient(patient_id: str, payload: PatientUpdate, fhir_server_url: Optional[str] = Query(default=None)) -> PatientSummary:
+    # Layer 1: Pydantic validation (automatic via PatientUpdate model)
     server_url = fhir_server_url or FHIR_BASE_URL
     existing = await fhir_get(f"Patient/{patient_id}", base_url=server_url)
     if not existing or existing.get("resourceType") != "Patient":
@@ -214,6 +251,7 @@ async def update_patient(patient_id: str, payload: PatientUpdate, fhir_server_ur
 
     # Merge updates into existing resource according to FHIR
     if payload.birthDate is not None:
+        # Layer 2: Business Rules validation
         validate_birthdate_not_future(payload.birthDate)
     if payload.given is not None or payload.family is not None:
         names = existing.get("name") or [{}]
@@ -235,6 +273,9 @@ async def update_patient(patient_id: str, payload: PatientUpdate, fhir_server_ur
             existing["telecom"] = telecom
         else:
             existing["telecom"] = [{"system": "phone", "value": str(payload.phone)}]
+
+    # Layer 3: FHIR Schema validation
+    validate_resource_against_fhir_schema(existing)
 
     updated = await fhir_put("Patient", patient_id, existing, base_url=server_url)
     summary = extract_patient_summary(updated)
